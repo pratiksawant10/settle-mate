@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 204 56% 98%;
+    --foreground: 222 54% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 199 88% 28%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 167 58% 92%;
+    --secondary-foreground: 173 76% 18%;
+    --muted: 210 35% 94%;
+    --muted-foreground: 218 18% 41%;
+    --accent: 25 95% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 196 100% 26%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .settlemate-grid {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .settlemate-shell {
+    background:
+      radial-gradient(circle at 20% 10%, rgba(14, 165, 233, 0.11), transparent 28%),
+      radial-gradient(circle at 80% 0%, rgba(16, 185, 129, 0.12), transparent 30%),
+      linear-gradient(135deg, #f8fbff 0%, #ffffff 45%, #effaf7 100%);
+  }
+
+  .dashboard-grid {
+    background-image:
+      linear-gradient(rgba(2, 132, 199, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(2, 132, 199, 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
