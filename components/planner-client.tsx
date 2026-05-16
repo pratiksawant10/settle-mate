@@ -24,12 +24,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { saveStudentOnboarding } from "@/app/planner/actions";
 import { cities } from "@/lib/constants";
 import { cn, formatCurrency } from "@/lib/utils";
 
-type Concern = "housing" | "job" | "budget" | "visa" | "loneliness" | "transport" | "study pressure";
+export type Concern = "housing" | "job" | "budget" | "visa" | "loneliness" | "transport" | "study pressure";
 
-type PlannerForm = {
+export type PlannerForm = {
   name: string;
   origin: string;
   city: string;
@@ -81,13 +82,13 @@ const citySuburbs: Record<string, string[]> = {
   Canberra: ["Acton", "Belconnen", "Braddon", "Dickson", "Gungahlin"],
 };
 
-const initialForm: PlannerForm = {
-  name: "Aarav",
-  origin: "India",
+export const emptyPlannerForm: PlannerForm = {
+  name: "",
+  origin: "",
   city: "Melbourne",
-  institution: "RMIT University",
-  startDate: "2026-07-20",
-  monthlyBudget: "2200",
+  institution: "",
+  startDate: "",
+  monthlyBudget: "",
   accommodation: "Private room in shared house",
   partTime: "yes",
   concern: "housing",
@@ -102,6 +103,10 @@ const plannerSidebarItems = [
 ] as const;
 
 type PlannerSection = (typeof plannerSidebarItems)[number]["section"];
+
+type PlannerClientProps = {
+  initialProfile?: PlannerForm | null;
+};
 
 function displayDate(value: string) {
   if (!value) return "Course date TBC";
@@ -174,11 +179,15 @@ function generatePlan(form: PlannerForm): StudentPlan {
   };
 }
 
-export function PlannerClient() {
-  const [form, setForm] = useState<PlannerForm>(initialForm);
-  const [plan, setPlan] = useState<StudentPlan>(() => generatePlan(initialForm));
+export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
+  const [form, setForm] = useState<PlannerForm>(initialProfile ?? emptyPlannerForm);
+  const [plan, setPlan] = useState<StudentPlan | null>(() =>
+    initialProfile ? generatePlan(initialProfile) : null,
+  );
   const [activeSection, setActiveSection] = useState<PlannerSection>("overview");
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const monthlyBudgetLabel = useMemo(() => formatCurrency(Number(form.monthlyBudget) || 0), [form.monthlyBudget]);
   const activeSidebarItem = plannerSidebarItems.find((item) => item.section === activeSection) ?? plannerSidebarItems[0];
@@ -187,32 +196,73 @@ export function PlannerClient() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPlan(generatePlan(form));
-    setGeneratedAt(new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" }).format(new Date()));
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const result = await saveStudentOnboarding(form);
+
+      if (!result.ok) {
+        setSaveError(result.message);
+        return;
+      }
+
+      setPlan(generatePlan(form));
+      setGeneratedAt(
+        new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" }).format(new Date(result.savedAt)),
+      );
+      setActiveSection("overview");
+      window.dispatchEvent(new Event("student-plan-updated"));
+    } catch {
+      setSaveError("We could not save your onboarding profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editOnboarding() {
+    setPlan(null);
+    setGeneratedAt(null);
+    setSaveError(null);
     setActiveSection("overview");
   }
 
   return (
     <PageShell
-      eyebrow="Student Planner Dashboard"
-      title="Turn arrival details into a personalised first-90-days dashboard"
-      description="This high-fidelity MVP screen shows how the student plan feels after submission: calm, personalised, and action-oriented."
+      eyebrow={plan ? "Student Planner Dashboard" : "Student Planner Onboarding"}
+      title={plan ? "Your personalised first-90-days dashboard" : "Build your personalised first-90-days dashboard"}
+      description={
+        plan
+          ? "Review your saved student profile, first-week checklist, budget snapshot, housing prompts, and support reminders."
+          : "Start with your arrival, study, money, housing, and support details. Your dashboard appears after onboarding."
+      }
     >
-      <div className="grid gap-6 xl:grid-cols-[390px_1fr]">
+      <div className={cn("grid gap-6", !plan && "xl:grid-cols-[390px_1fr]")}>
+        {!plan ? (
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle>Student setup</CardTitle>
+            <CardTitle>Student onboarding</CardTitle>
           </CardHeader>
           <CardContent>
             <form className="grid gap-5" onSubmit={onSubmit}>
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
                 <Field id="name" label="Student name">
-                  <Input id="name" value={form.name} onChange={(event) => updateField("name", event.target.value)} />
+                  <Input
+                    id="name"
+                    required
+                    value={form.name}
+                    onChange={(event) => updateField("name", event.target.value)}
+                  />
                 </Field>
                 <Field id="origin" label="Country of origin">
-                  <Input id="origin" value={form.origin} onChange={(event) => updateField("origin", event.target.value)} />
+                  <Input
+                    id="origin"
+                    required
+                    value={form.origin}
+                    onChange={(event) => updateField("origin", event.target.value)}
+                  />
                 </Field>
               </div>
 
@@ -229,6 +279,7 @@ export function PlannerClient() {
                 <Field id="institution" label="University or college">
                   <Input
                     id="institution"
+                    required
                     value={form.institution}
                     onChange={(event) => updateField("institution", event.target.value)}
                   />
@@ -240,6 +291,7 @@ export function PlannerClient() {
                   <Input
                     id="startDate"
                     type="date"
+                    required
                     value={form.startDate}
                     onChange={(event) => updateField("startDate", event.target.value)}
                   />
@@ -249,6 +301,7 @@ export function PlannerClient() {
                     id="monthlyBudget"
                     type="number"
                     min="0"
+                    required
                     value={form.monthlyBudget}
                     onChange={(event) => updateField("monthlyBudget", event.target.value)}
                   />
@@ -295,18 +348,37 @@ export function PlannerClient() {
                 </Field>
               </div>
 
-              <Button type="submit" variant="accent" size="lg">
-                Generate Student Dashboard
+              <Button type="submit" variant="accent" size="lg" disabled={saving}>
+                {saving ? "Saving..." : "Start Student Dashboard"}
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
               </Button>
+              {saveError ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900">
+                  {saveError}
+                </div>
+              ) : null}
               {generatedAt ? (
-                <p className="text-sm leading-6 text-muted-foreground">Dashboard generated at {generatedAt}.</p>
+                <p className="text-sm leading-6 text-muted-foreground">Dashboard saved at {generatedAt}.</p>
               ) : null}
             </form>
           </CardContent>
         </Card>
+        ) : null}
 
-        <div className="overflow-hidden rounded-lg border bg-white shadow-soft">
+        {plan ? (
+          <div className="grid gap-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-5 py-4 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold text-primary">Saved student dashboard</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  This dashboard is generated from the onboarding profile saved to Supabase.
+                </p>
+              </div>
+              <Button type="button" variant="outline" onClick={editOnboarding}>
+                Edit onboarding
+              </Button>
+            </div>
+            <div className="overflow-hidden rounded-lg border bg-white shadow-soft">
           <div className="grid min-h-[780px] lg:grid-cols-[220px_1fr]">
             <aside className="hidden border-r bg-slate-950 p-5 text-white lg:block">
               <div className="flex items-center gap-2 font-bold">
@@ -542,7 +614,23 @@ export function PlannerClient() {
               </div>
             </section>
           </div>
-        </div>
+          </div>
+          </div>
+        ) : (
+          <div className="grid min-h-[560px] items-center rounded-lg border bg-white p-6 shadow-soft">
+            <div className="mx-auto max-w-xl text-center">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                <Sparkles className="h-7 w-7" aria-hidden="true" />
+              </span>
+              <p className="mt-5 text-sm font-semibold uppercase text-primary">Onboarding first</p>
+              <h2 className="mt-2 text-3xl font-bold leading-tight">Your dashboard is ready to build</h2>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                Complete the student onboarding fields to generate your first-week checklist, budget snapshot,
+                housing prompts, support reminders, and next-best action.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </PageShell>
   );

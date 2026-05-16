@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BellRing, Sparkles, type LucideIcon } from "lucide-react";
+import { BellRing, type LucideIcon } from "lucide-react";
 
 import { PageShell } from "@/components/page-shell";
+import { PlanCtaLink } from "@/components/plan-cta-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,10 +36,7 @@ export function ComingSoonTool({ eyebrow, title, description, icon: Icon, highli
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Button asChild variant="accent">
-                <Link href="/planner">
-                  Build My Plan
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
-                </Link>
+                <PlanCtaLink icon="sparkles" />
               </Button>
               <Button asChild variant="outline">
                 <Link href="/ask-ai">Ask AI</Link>

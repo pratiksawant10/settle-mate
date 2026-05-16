@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ArrowRight,
   Banknote,
   BriefcaseBusiness,
   CheckCircle2,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { FeatureCard } from "@/components/feature-card";
+import { PlanCtaLink } from "@/components/plan-cta-link";
 import { SectionHeader } from "@/components/section-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,10 +70,7 @@ export default function HomePage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" variant="accent">
-                <Link href="/planner">
-                  Build My Student Plan
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
+                <PlanCtaLink defaultLabel="Build My Student Plan" profileLabel="View My Student Plan" />
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link href="/ask-ai">
@@ -240,10 +237,7 @@ export default function HomePage() {
             </p>
           </div>
           <Button asChild size="lg" variant="accent">
-            <Link href="/planner">
-              Build My Student Plan
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+            <PlanCtaLink defaultLabel="Build My Student Plan" profileLabel="View My Student Plan" />
           </Button>
         </div>
       </section>

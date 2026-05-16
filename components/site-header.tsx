@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 
+import { PlanCtaLink } from "@/components/plan-cta-link";
 import { Button } from "@/components/ui/button";
 import { navItems } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,7 @@ export function SiteHeader() {
 
         <div className="hidden lg:block">
           <Button asChild size="sm" variant="accent">
-            <Link href="/planner">Build My Plan</Link>
+            <PlanCtaLink icon="none" />
           </Button>
         </div>
 

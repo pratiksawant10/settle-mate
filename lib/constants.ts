@@ -49,6 +49,12 @@ export const features = [
     href: "/budget",
     icon: Banknote,
   },
+    {
+    title: "City Survival Guides",
+    description: "Scan transport, suburbs, cost, community, and safety tips for major Australian student cities.",
+    href: "/city-guides",
+    icon: MapPinned,
+  },
   {
     title: "RentGuard AI",
     description: "Spot warning signs in rental listings before you pay bond, transfer money, or share documents.",
@@ -69,12 +75,6 @@ export const features = [
     href: "/visa-guide",
     icon: CalendarCheck,
     comingSoon: true,
-  },
-  {
-    title: "City Survival Guides",
-    description: "Scan transport, suburbs, cost, community, and safety tips for major Australian student cities.",
-    href: "/city-guides",
-    icon: MapPinned,
   },
 ];
 
