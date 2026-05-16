@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Banknote,
   CalendarDays,
@@ -24,23 +24,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { saveStudentOnboarding } from "@/app/planner/actions";
+import { recommendSuburbsForPlan, saveStudentOnboarding } from "@/app/planner/actions";
 import { cities } from "@/lib/constants";
+import {
+  emptyPlannerForm,
+  loadingSuburbRecommendations,
+  type Concern,
+  type PlannerForm,
+  type SuburbRecommendationResult,
+} from "@/lib/student-plan";
 import { cn, formatCurrency } from "@/lib/utils";
-
-export type Concern = "housing" | "job" | "budget" | "visa" | "loneliness" | "transport" | "study pressure";
-
-export type PlannerForm = {
-  name: string;
-  origin: string;
-  city: string;
-  institution: string;
-  startDate: string;
-  monthlyBudget: string;
-  accommodation: string;
-  partTime: "yes" | "no";
-  concern: Concern;
-};
 
 type StudentPlan = {
   readiness: number;
@@ -49,7 +42,7 @@ type StudentPlan = {
   first30: string[];
   first90: string[];
   budgetSuggestions: string[];
-  suburbs: string[];
+  suburbRecommendations: SuburbRecommendationResult;
   reminders: string[];
   nextAction: string;
 };
@@ -73,27 +66,6 @@ const cityTransport: Record<string, string> = {
   Canberra: "Check MyWay+ and bus/light rail links.",
 };
 
-const citySuburbs: Record<string, string[]> = {
-  Melbourne: ["Clayton", "Footscray", "Box Hill", "Carlton", "Brunswick"],
-  Sydney: ["Parramatta", "Strathfield", "Burwood", "Ultimo", "Kensington"],
-  Brisbane: ["St Lucia", "Toowong", "Kelvin Grove", "South Bank", "Woolloongabba"],
-  Adelaide: ["North Adelaide", "Mawson Lakes", "Unley", "Norwood", "Bowden"],
-  Perth: ["Bentley", "Crawley", "Joondalup", "Victoria Park", "Northbridge"],
-  Canberra: ["Acton", "Belconnen", "Braddon", "Dickson", "Gungahlin"],
-};
-
-export const emptyPlannerForm: PlannerForm = {
-  name: "",
-  origin: "",
-  city: "Melbourne",
-  institution: "",
-  startDate: "",
-  monthlyBudget: "",
-  accommodation: "Private room in shared house",
-  partTime: "yes",
-  concern: "housing",
-};
-
 const plannerSidebarItems = [
   { label: "Overview", icon: Plane, section: "overview" },
   { label: "Checklist", icon: ClipboardCheck, section: "checklist" },
@@ -115,7 +87,10 @@ function displayDate(value: string) {
   );
 }
 
-function generatePlan(form: PlannerForm): StudentPlan {
+function generatePlan(
+  form: PlannerForm,
+  suburbRecommendations: SuburbRecommendationResult = loadingSuburbRecommendations,
+): StudentPlan {
   // Future AI/API integration: replace this deterministic plan builder with a model-backed service.
   const budget = Number(form.monthlyBudget) || 0;
   const readiness = Math.max(
@@ -166,7 +141,7 @@ function generatePlan(form: PlannerForm): StudentPlan {
       "Put rent, transport, and groceries into separate weekly buckets.",
       "Keep emergency money away from daily spending.",
     ],
-    suburbs: citySuburbs[form.city] ?? ["Near campus", "On a direct transport line", "Close to groceries"],
+    suburbRecommendations,
     reminders: [
       "Set OSHC, COE, visa date, and rent reminders.",
       "Check official government and university sources before important decisions.",
@@ -196,6 +171,37 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  async function refreshSuburbRecommendations(targetForm: PlannerForm) {
+    setPlan((current) => (current ? { ...current, suburbRecommendations: loadingSuburbRecommendations } : current));
+
+    const result = await recommendSuburbsForPlan(targetForm);
+
+    setPlan((current) => (current ? { ...current, suburbRecommendations: result } : generatePlan(targetForm, result)));
+  }
+
+  useEffect(() => {
+    if (!initialProfile) {
+      return;
+    }
+
+    refreshSuburbRecommendations(initialProfile).catch(() => {
+      setPlan((current) =>
+        current
+          ? {
+              ...current,
+              suburbRecommendations: {
+                status: "error",
+                institutionName: initialProfile.institution,
+                message: "We could not generate suburb recommendations. Please try again.",
+                recommendations: [],
+                sources: [],
+              },
+            }
+          : current,
+      );
+    });
+  }, [initialProfile]);
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -215,6 +221,22 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
       );
       setActiveSection("overview");
       window.dispatchEvent(new Event("student-plan-updated"));
+      refreshSuburbRecommendations(form).catch(() => {
+        setPlan((current) =>
+          current
+            ? {
+                ...current,
+                suburbRecommendations: {
+                  status: "error",
+                  institutionName: form.institution,
+                  message: "We could not generate suburb recommendations. Please try again from the housing section.",
+                  recommendations: [],
+                  sources: [],
+                },
+              }
+            : current,
+        );
+      });
     } catch {
       setSaveError("We could not save your onboarding profile. Please try again.");
     } finally {
@@ -557,19 +579,84 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
                 ) : null}
 
                 {activeSection === "housing" ? (
-                  <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
+                  <div className="grid gap-5">
                     <div className="rounded-lg border bg-white p-5">
-                      <h3 className="font-semibold">Recommended suburbs</h3>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {plan.suburbs.map((suburb) => (
-                          <Badge key={suburb} variant="outline">
-                            {suburb}
-                          </Badge>
-                        ))}
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-semibold">Recommended suburbs</h3>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            {plan.suburbRecommendations.message}
+                          </p>
+                        </div>
+                        <Badge variant={plan.suburbRecommendations.status === "ai" ? "success" : "outline"}>
+                          {plan.suburbRecommendations.status === "ai"
+                            ? "AI matched"
+                            : plan.suburbRecommendations.status === "static"
+                              ? "Static fallback"
+                              : plan.suburbRecommendations.status === "loading"
+                                ? "Finding suburbs"
+                                : "Unavailable"}
+                        </Badge>
                       </div>
-                      <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                        Compare commute time, rent, grocery access, and inspection quality before deciding.
-                      </p>
+
+                      {plan.suburbRecommendations.status === "loading" ? (
+                        <div className="mt-5 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950">
+                          Checking the university or college, campus proximity, current rent context, transport, and casual
+                          work access.
+                        </div>
+                      ) : null}
+
+                      {plan.suburbRecommendations.status === "error" ? (
+                        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900">
+                          <span>{plan.suburbRecommendations.message}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-red-200 bg-white text-red-900 hover:bg-red-100"
+                            onClick={() => refreshSuburbRecommendations(form)}
+                          >
+                            Try again
+                          </Button>
+                        </div>
+                      ) : null}
+
+                      {plan.suburbRecommendations.recommendations.length > 0 ? (
+                        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                          {plan.suburbRecommendations.recommendations.map((item) => (
+                            <article key={item.suburb} className="rounded-lg border bg-slate-50 p-4">
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h4 className="text-lg font-semibold">{item.suburb}</h4>
+                                <Badge variant="outline">{item.medianWeeklyRent}</Badge>
+                              </div>
+                              <div className="mt-4 grid gap-3 text-sm leading-6 text-muted-foreground">
+                                <p>
+                                  <span className="font-semibold text-foreground">Proximity:</span> {item.proximity}
+                                </p>
+                                <p>
+                                  <span className="font-semibold text-foreground">Transport:</span>{" "}
+                                  {item.transportNotes}
+                                </p>
+                                <p>
+                                  <span className="font-semibold text-foreground">Free tram zone:</span>{" "}
+                                  {item.freeTramZone}
+                                </p>
+                                <p>
+                                  <span className="font-semibold text-foreground">Casual jobs:</span>{" "}
+                                  {item.jobProspects}
+                                </p>
+                              </div>
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                {item.benefits.map((benefit) => (
+                                  <Badge key={benefit} variant="secondary">
+                                    {benefit}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="rounded-lg border bg-white p-5">
                       <h3 className="font-semibold">Housing actions</h3>

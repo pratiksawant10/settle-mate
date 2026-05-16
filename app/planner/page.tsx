@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { PlannerClient } from "@/components/planner-client";
-import type { Concern, PlannerForm } from "@/components/planner-client";
 import { createClient } from "@/lib/supabase/server";
+import type { Concern, PlannerForm } from "@/lib/student-plan";
 
 type StudentOnboardingProfileRow = {
   student_name: string;

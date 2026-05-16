@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import type { PlannerForm } from "@/components/planner-client";
+import { requestSuburbRecommendations } from "@/lib/services/suburb-recommendations";
+import type { PlannerForm, SuburbRecommendationResult } from "@/lib/student-plan";
 
 type SaveStudentOnboardingResult =
   | { ok: true; savedAt: string }
@@ -59,4 +60,36 @@ export async function saveStudentOnboarding(form: PlannerForm): Promise<SaveStud
   revalidatePath("/planner");
 
   return { ok: true, savedAt };
+}
+
+export async function recommendSuburbsForPlan(form: PlannerForm): Promise<SuburbRecommendationResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      status: "error",
+      institutionName: form.institution,
+      message: "Please sign in again before generating suburb recommendations.",
+      recommendations: [],
+      sources: [],
+    };
+  }
+
+  try {
+    return await requestSuburbRecommendations(form.city, form.institution);
+  } catch (error) {
+    return {
+      status: "error",
+      institutionName: form.institution,
+      message:
+        error instanceof DOMException && error.name === "TimeoutError"
+          ? "Suburb recommendations took too long. You can keep using the dashboard and try again from Housing."
+          : "We could not generate suburb recommendations. Please try again from Housing.",
+      recommendations: [],
+      sources: [],
+    };
+  }
 }

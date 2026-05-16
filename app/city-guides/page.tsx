@@ -64,7 +64,7 @@ export default function CityGuidesPage() {
       title="City-by-city student survival guides"
       description="Static MVP cards show the kind of local context students need before choosing suburbs, transport routes, and community support."
     >
-      <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_px]">
         <div className="grid gap-5 md:grid-cols-2">
           {cityGuides.map((guide) => (
             <Card key={guide.city} className="h-full">
@@ -122,37 +122,6 @@ export default function CityGuidesPage() {
             </Card>
           ))}
         </div>
-
-        <aside className="h-fit rounded-lg border bg-white p-6 shadow-soft">
-          <Badge variant="secondary">Detail preview</Badge>
-          <h2 className="mt-4 text-2xl font-bold">Melbourne survival snapshot</h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            A production version could turn each city into a full guide with verified links, campus-specific
-            neighbourhoods, and student community resources.
-          </p>
-          <div className="mt-6 space-y-5">
-            <div>
-              <h3 className="font-semibold">Transport: {melbourne.card}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Use student concession if eligible and save campus, grocery, and late-night routes.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Student suburbs</h3>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {melbourne.suburbs.map((suburb) => (
-                  <Badge key={suburb} variant="outline">
-                    {suburb}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-lg bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
-              Join university clubs early, explore Indian grocery stores and cultural community groups, and avoid paying
-              rent or bond before verifying a listing.
-            </div>
-          </div>
-        </aside>
       </div>
     </PageShell>
   );
