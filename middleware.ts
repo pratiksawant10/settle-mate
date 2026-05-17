@@ -7,5 +7,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/planner/:path*", "/login"],
+  matcher: ["/planner/:path*", "/ask-ai/:path*", "/login"],
 };

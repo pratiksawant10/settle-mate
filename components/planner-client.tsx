@@ -393,7 +393,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
               <div>
                 <p className="text-sm font-semibold text-primary">Saved student dashboard</p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  This dashboard is generated from the onboarding profile saved to Supabase.
+                  This dashboard is generated from the onboarding profile saved.
                 </p>
               </div>
               <Button type="button" variant="outline" onClick={editOnboarding}>

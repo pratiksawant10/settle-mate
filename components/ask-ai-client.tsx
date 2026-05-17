@@ -32,6 +32,12 @@ type Message = {
   role: "student" | "assistant";
   content: string;
   status?: "error";
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    model: string;
+  };
 };
 
 export type SavedProfileContext = {
@@ -46,7 +52,7 @@ export type SavedProfileContext = {
 };
 
 type AskAiClientProps = {
-  profile: SavedProfileContext | null;
+  profile: SavedProfileContext;
 };
 
 const starterQuestions = [
@@ -63,9 +69,7 @@ export function AskAiClient({ profile }: AskAiClientProps) {
       id: 1,
       role: "assistant",
       content:
-        profile
-          ? `Hi, I am SettleMate AI. I can use your saved ${profile.city} student profile to give more relevant next steps. Ask about rent, jobs, budget, first-week setup, or general compliance reminders.`
-          : "Hi, I am SettleMate AI. I can help with student-life questions. Set up your student plan first if you want me to use your saved city, university, budget, and housing context.",
+        `Hi, I am SettleMate AI. I can use your saved ${profile.city} student profile to give more relevant next steps. Ask about rent, jobs, budget, first-week setup, or general compliance reminders.`,
     },
   ]);
   const [question, setQuestion] = useState("");
@@ -74,18 +78,16 @@ export function AskAiClient({ profile }: AskAiClientProps) {
 
   const profileItems = useMemo(
     () =>
-      profile
-        ? [
-            { label: "Student", value: profile.student, icon: UserRound },
-            { label: "City", value: profile.city, icon: MapPinned },
-            { label: "Institution", value: profile.institution, icon: GraduationCap },
-            { label: "Course starts", value: profile.courseStart, icon: CalendarDays },
-            { label: "Monthly budget", value: profile.monthlyBudget, icon: Banknote },
-            { label: "Accommodation", value: profile.accommodation, icon: Home },
-            { label: "Work plan", value: profile.partTime, icon: BriefcaseBusiness },
-            { label: "Main concern", value: profile.mainConcern, icon: Target },
-          ]
-        : [],
+      [
+        { label: "Student", value: profile.student, icon: UserRound },
+        { label: "City", value: profile.city, icon: MapPinned },
+        { label: "Institution", value: profile.institution, icon: GraduationCap },
+        { label: "Course starts", value: profile.courseStart, icon: CalendarDays },
+        { label: "Monthly budget", value: profile.monthlyBudget, icon: Banknote },
+        { label: "Accommodation", value: profile.accommodation, icon: Home },
+        { label: "Work plan", value: profile.partTime, icon: BriefcaseBusiness },
+        { label: "Main concern", value: profile.mainConcern, icon: Target },
+      ],
     [profile],
   );
 
@@ -118,6 +120,7 @@ export function AskAiClient({ profile }: AskAiClientProps) {
         role: "assistant",
         content: result.ok ? result.answer : result.message,
         status: result.ok ? undefined : "error",
+        usage: result.ok ? result.usage : undefined,
       },
     ]);
     setPending(false);
@@ -163,9 +166,7 @@ export function AskAiClient({ profile }: AskAiClientProps) {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="success">OpenAI connected</Badge>
-                <Badge variant={profile ? "secondary" : "warning"}>
-                  {profile ? "Saved profile loaded" : "No saved profile"}
-                </Badge>
+                <Badge variant="secondary">Saved profile loaded</Badge>
               </div>
             </div>
 
@@ -228,6 +229,20 @@ export function AskAiClient({ profile }: AskAiClientProps) {
                         )}
                       >
                         {isStudent ? message.content : renderMessageContent(message.content)}
+                        {message.usage ? (
+                          <div className="mt-3 flex flex-wrap gap-2 border-t pt-3 text-xs font-semibold text-muted-foreground">
+                            <span className="rounded-md bg-slate-100 px-2 py-1">{message.usage.model}</span>
+                            <span className="rounded-md bg-slate-100 px-2 py-1">
+                              {message.usage.totalTokens.toLocaleString()} tokens
+                            </span>
+                            <span className="rounded-md bg-slate-100 px-2 py-1">
+                              in {message.usage.inputTokens.toLocaleString()}
+                            </span>
+                            <span className="rounded-md bg-slate-100 px-2 py-1">
+                              out {message.usage.outputTokens.toLocaleString()}
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
                       {isStudent ? (
                         <div className="hidden w-7 shrink-0 sm:block" />
@@ -292,32 +307,20 @@ export function AskAiClient({ profile }: AskAiClientProps) {
               <CardTitle className="text-base">Saved profile context</CardTitle>
             </CardHeader>
             <CardContent className="p-4">
-              {profile ? (
-                <div className="grid gap-3">
-                  {profileItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div key={item.label} className="grid gap-2 rounded-lg border bg-white p-3">
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                          <p className="text-xs font-semibold uppercase text-muted-foreground">{item.label}</p>
-                        </div>
-                        <p className="break-words text-sm font-semibold leading-5">{item.value}</p>
+              <div className="grid gap-3">
+                {profileItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="grid gap-2 rounded-lg border bg-white p-3">
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">{item.label}</p>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-sm leading-6 text-amber-950">
-                    No saved student profile was found. Build your student plan to give Ask AI your city,
-                    institution, budget, accommodation, and main concern.
-                  </p>
-                  <Button asChild variant="accent" className="mt-4">
-                    <Link href="/login?next=/planner">Build My Plan</Link>
-                  </Button>
-                </div>
-              )}
+                      <p className="break-words text-sm font-semibold leading-5">{item.value}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
@@ -333,23 +336,6 @@ export function AskAiClient({ profile }: AskAiClientProps) {
                   employment, or migration advice. For visa topics, check official sources or a registered migration agent.
                 </p>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Next useful tools</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              <Button asChild variant="outline" className="justify-start">
-                <Link href="/budget">Check budget health</Link>
-              </Button>
-              <Button variant="outline" className="justify-start" disabled>
-                RentGuard AI coming soon
-              </Button>
-              <Button variant="outline" className="justify-start" disabled>
-                Part-Time Job Coach coming soon
-              </Button>
             </CardContent>
           </Card>
         </aside>

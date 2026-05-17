@@ -8,8 +8,15 @@ type ChatHistoryMessage = {
 };
 
 type AskAiResult =
-  | { ok: true; answer: string }
+  | { ok: true; answer: string; usage: TokenUsage }
   | { ok: false; message: string };
+
+type TokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  model: string;
+};
 
 type StudentOnboardingProfileRow = {
   student_name: string;
@@ -32,6 +39,11 @@ type OpenAiResponse = {
   }>;
   error?: {
     message?: string;
+  };
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
   };
 };
 
@@ -91,15 +103,21 @@ export async function askSettleMateAi(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = user
-    ? await supabase
-        .from("student_onboarding_profiles")
-        .select(
-          "student_name,country_of_origin,city,institution,course_start_date,monthly_budget,accommodation,part_time,main_concern",
-        )
-        .eq("user_id", user.id)
-        .maybeSingle<StudentOnboardingProfileRow>()
-    : { data: null };
+  if (!user) {
+    return { ok: false, message: "Please sign in before using Ask AI." };
+  }
+
+  const { data: profile } = await supabase
+    .from("student_onboarding_profiles")
+    .select(
+      "student_name,country_of_origin,city,institution,course_start_date,monthly_budget,accommodation,part_time,main_concern",
+    )
+    .eq("user_id", user.id)
+    .maybeSingle<StudentOnboardingProfileRow>();
+
+  if (!profile) {
+    return { ok: false, message: "Build your student plan before using Ask AI." };
+  }
 
   const recentHistory = history
     .slice(-8)
@@ -107,6 +125,7 @@ export async function askSettleMateAi(
     .join("\n\n");
 
   try {
+    const model = process.env.OPENAI_CHAT_MODEL ?? "gpt-4.1-mini";
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -115,7 +134,7 @@ export async function askSettleMateAi(
       },
       signal: AbortSignal.timeout(20000),
       body: JSON.stringify({
-        model: process.env.OPENAI_CHAT_MODEL ?? "gpt-4.1-mini",
+        model,
         max_output_tokens: 900,
         input: [
           {
@@ -152,7 +171,16 @@ ${trimmed}`,
       return { ok: false, message: "OpenAI returned an empty answer. Please try again." };
     }
 
-    return { ok: true, answer };
+    return {
+      ok: true,
+      answer,
+      usage: {
+        inputTokens: data.usage?.input_tokens ?? 0,
+        outputTokens: data.usage?.output_tokens ?? 0,
+        totalTokens: data.usage?.total_tokens ?? 0,
+        model,
+      },
+    };
   } catch (error) {
     return {
       ok: false,

@@ -9,6 +9,17 @@ function getSafeNextPath(value: string | null, fallback = "/planner") {
   return value;
 }
 
+function getRequestOrigin(request: NextRequest) {
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const protocol = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+
+  if (!host) {
+    return request.nextUrl.origin;
+  }
+
+  return `${protocol}://${host}`;
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -45,19 +56,20 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isPlannerRoute = pathname.startsWith("/planner");
+  const isAskAiRoute = pathname.startsWith("/ask-ai");
   const isLoginRoute = pathname === "/login";
 
-  if (isPlannerRoute && !user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.search = "";
+  if ((isPlannerRoute || isAskAiRoute) && !user) {
+    const redirectUrl = new URL("/login", getRequestOrigin(request));
     redirectUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
 
     return NextResponse.redirect(redirectUrl);
   }
 
   if (isLoginRoute && user) {
-    return NextResponse.redirect(new URL(getSafeNextPath(request.nextUrl.searchParams.get("next")), request.url));
+    return NextResponse.redirect(
+      new URL(getSafeNextPath(request.nextUrl.searchParams.get("next")), getRequestOrigin(request)),
+    );
   }
 
   return response;

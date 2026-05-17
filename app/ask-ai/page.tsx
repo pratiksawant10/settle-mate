@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { AskAiClient } from "@/components/ask-ai-client";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,11 +21,7 @@ function formatDate(value: string) {
   );
 }
 
-function mapProfile(profile: StudentOnboardingProfileRow | null) {
-  if (!profile) {
-    return null;
-  }
-
+function mapProfile(profile: StudentOnboardingProfileRow) {
   return {
     student: `${profile.student_name} from ${profile.country_of_origin}`,
     city: profile.city,
@@ -42,15 +40,21 @@ export default async function AskAiPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = user
-    ? await supabase
-        .from("student_onboarding_profiles")
-        .select(
-          "student_name,country_of_origin,city,institution,course_start_date,monthly_budget,accommodation,part_time,main_concern",
-        )
-        .eq("user_id", user.id)
-        .maybeSingle<StudentOnboardingProfileRow>()
-    : { data: null };
+  if (!user) {
+    redirect("/login?next=/ask-ai");
+  }
+
+  const { data: profile } = await supabase
+    .from("student_onboarding_profiles")
+    .select(
+      "student_name,country_of_origin,city,institution,course_start_date,monthly_budget,accommodation,part_time,main_concern",
+    )
+    .eq("user_id", user.id)
+    .maybeSingle<StudentOnboardingProfileRow>();
+
+  if (!profile) {
+    redirect("/planner");
+  }
 
   return <AskAiClient profile={mapProfile(profile)} />;
 }
