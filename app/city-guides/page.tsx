@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const cityGuides = [
   {
     city: "Melbourne",
-    rent: "$260-$420/week",
+    rent: "Median rent: $260-$420/week",
     card: "Myki",
     suburbs: ["Clayton", "Footscray", "Box Hill", "Carlton", "Brunswick"],
     community: "Join university clubs early and look for Indian grocery stores and community groups.",
@@ -15,7 +15,7 @@ const cityGuides = [
   },
   {
     city: "Sydney",
-    rent: "$320-$520/week",
+    rent: "Median rent: $320-$520/week",
     card: "Opal",
     suburbs: ["Parramatta", "Strathfield", "Burwood", "Ultimo", "Kensington"],
     community: "Use student associations, libraries, and local council events to build routine.",
@@ -23,7 +23,7 @@ const cityGuides = [
   },
   {
     city: "Brisbane",
-    rent: "$240-$390/week",
+    rent: "Median rent: $240-$390/week",
     card: "go card",
     suburbs: ["St Lucia", "Toowong", "Kelvin Grove", "South Bank", "Woolloongabba"],
     community: "Outdoor groups and campus societies are practical ways to meet people.",
@@ -31,7 +31,7 @@ const cityGuides = [
   },
   {
     city: "Adelaide",
-    rent: "$210-$340/week",
+    rent: "Median rent: $210-$340/week",
     card: "metroCARD",
     suburbs: ["North Adelaide", "Mawson Lakes", "Unley", "Norwood", "Bowden"],
     community: "Peer programs and cultural community groups can help students settle faster.",
@@ -39,7 +39,7 @@ const cityGuides = [
   },
   {
     city: "Perth",
-    rent: "$230-$380/week",
+    rent: "Median rent: $230-$380/week",
     card: "SmartRider",
     suburbs: ["Bentley", "Crawley", "Joondalup", "Victoria Park", "Northbridge"],
     community: "Campus clubs and outdoor groups can make the city feel familiar quickly.",
@@ -47,7 +47,7 @@ const cityGuides = [
   },
   {
     city: "Canberra",
-    rent: "$260-$430/week",
+    rent: "Median rent: $260-$430/week",
     card: "MyWay+",
     suburbs: ["Acton", "Belconnen", "Braddon", "Dickson", "Gungahlin"],
     community: "Student housing networks and campus events are useful for quick connections.",
@@ -62,7 +62,7 @@ export default function CityGuidesPage() {
     <PageShell
       eyebrow="City Survival Guides"
       title="City-by-city student survival guides"
-      description="Static MVP cards show the kind of local context students need before choosing suburbs, transport routes, and community support."
+      description="Get the inside scoop on living in Australia's top student cities with our city survival guides. From rent ranges and transport tips to community insights and safety advice, we've got you covered for a smooth transition to student life."
     >
       <div className="grid gap-6 xl:grid-cols-[1fr_px]">
         <div className="grid gap-5 md:grid-cols-2">

@@ -87,6 +87,63 @@ function displayDate(value: string) {
   );
 }
 
+function getCourseStartCountdown(value: string) {
+  if (!value) {
+    return {
+      value: "Date TBC",
+      helper: "Add your course start date to show a countdown.",
+    };
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return {
+      value: "Date TBC",
+      helper: "Check the course start date format.",
+    };
+  }
+
+  const startDate = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const days = Math.ceil((startDate.getTime() - today.getTime()) / 86_400_000);
+
+  if (days > 1) {
+    return {
+      value: `${days} days`,
+      helper: `Until ${displayDate(value)}`,
+    };
+  }
+
+  if (days === 1) {
+    return {
+      value: "1 day",
+      helper: `Until ${displayDate(value)}`,
+    };
+  }
+
+  if (days === 0) {
+    return {
+      value: "Starts today",
+      helper: displayDate(value),
+    };
+  }
+
+  if (days === -1) {
+    return {
+      value: "Started yesterday",
+      helper: displayDate(value),
+    };
+  }
+
+  return {
+    value: `Started ${Math.abs(days)} days ago`,
+    helper: displayDate(value),
+  };
+}
+
 function generatePlan(
   form: PlannerForm,
   suburbRecommendations: SuburbRecommendationResult = loadingSuburbRecommendations,
@@ -165,6 +222,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
   const [saving, setSaving] = useState(false);
 
   const monthlyBudgetLabel = useMemo(() => formatCurrency(Number(form.monthlyBudget) || 0), [form.monthlyBudget]);
+  const courseCountdown = useMemo(() => getCourseStartCountdown(form.startDate), [form.startDate]);
   const activeSidebarItem = plannerSidebarItems.find((item) => item.section === activeSection) ?? plannerSidebarItems[0];
 
   function updateField<K extends keyof PlannerForm>(field: K, value: PlannerForm[K]) {
@@ -389,7 +447,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
 
         {plan ? (
           <div className="grid gap-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-5 py-4 shadow-sm">
+            {/* <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-5 py-4 shadow-sm">
               <div>
                 <p className="text-sm font-semibold text-primary">Saved student dashboard</p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -399,7 +457,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
               <Button type="button" variant="outline" onClick={editOnboarding}>
                 Edit onboarding
               </Button>
-            </div>
+            </div> */}
             <div className="overflow-hidden rounded-lg border bg-white shadow-soft">
           <div className="grid min-h-[780px] lg:grid-cols-[220px_1fr]">
             <aside className="hidden border-r bg-slate-950 p-5 text-white lg:block">
@@ -442,11 +500,20 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
                       {form.institution || "Institution TBC"} · Starts {displayDate(form.startDate)} · {form.origin || "Origin TBC"}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3 rounded-lg border bg-white p-3">
-                    <UserRound className="h-5 w-5 text-primary" aria-hidden="true" />
-                    <div>
-                      <p className="text-xs font-semibold uppercase text-muted-foreground">Profile</p>
-                      <p className="text-sm font-semibold">{form.partTime === "yes" ? "Plans to work" : "Study-first plan"}</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-3 rounded-lg border bg-white p-3">
+                      <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Course countdown</p>
+                        <p className="text-sm font-semibold">{courseCountdown.value}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-lg border bg-white p-3">
+                      <UserRound className="h-5 w-5 text-primary" aria-hidden="true" />
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Profile</p>
+                        <p className="text-sm font-semibold">{form.partTime === "yes" ? "Plans to work" : "Study-first plan"}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -519,7 +586,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                       <MetricCard
                         label="Monthly budget"
                         value={monthlyBudgetLabel}
@@ -528,6 +595,12 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
                       <MetricCard
                         label="Course start"
                         value={displayDate(form.startDate)}
+                        icon={<CalendarDays className="h-5 w-5" />}
+                      />
+                      <MetricCard
+                        label="Course countdown"
+                        value={courseCountdown.value}
+                        helper={courseCountdown.helper}
                         icon={<CalendarDays className="h-5 w-5" />}
                       />
                       <MetricCard label="Main focus" value={form.concern} icon={<MapPinned className="h-5 w-5" />} />

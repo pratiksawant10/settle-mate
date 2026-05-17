@@ -42,9 +42,6 @@ export function SiteFooter() {
                 {item.label}
               </Link>
             ))}
-            <Link href="/design-system" className="text-sm text-muted-foreground hover:text-foreground">
-              Design System
-            </Link>
           </div>
         </div>
       </div>
