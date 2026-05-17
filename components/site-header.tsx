@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Sparkles, X } from "lucide-react";
+import { Menu, Settings, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 
+import { LogoutButton } from "@/components/logout-button";
 import { PlanCtaLink } from "@/components/plan-cta-link";
 import { Button } from "@/components/ui/button";
 import { navItems } from "@/lib/constants";
@@ -70,10 +71,22 @@ export function SiteHeader({ isAuthenticated }: SiteHeaderProps) {
           })}
         </nav>
 
-        <div className="hidden lg:block">
-          <Button asChild size="sm" variant="accent">
-            <PlanCtaLink icon="none" />
-          </Button>
+        <div className="hidden items-center gap-2 lg:flex">
+          {isAuthenticated ? (
+            <>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/account">
+                  Account Settings
+                  <Settings className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
+              <LogoutButton />
+            </>
+          ) : (
+            <Button asChild size="sm" variant="accent">
+              <PlanCtaLink icon="none" />
+            </Button>
+          )}
         </div>
 
         <Button
@@ -109,6 +122,31 @@ export function SiteHeader({ isAuthenticated }: SiteHeaderProps) {
                 </Link>
               );
             })}
+            {isAuthenticated ? (
+              <>
+                <Link
+                  href="/account"
+                  className={cn(
+                    "rounded-md px-3 py-3 text-sm font-medium text-muted-foreground",
+                    pathname === "/account"
+                      ? "bg-secondary text-secondary-foreground"
+                      : "hover:bg-muted hover:text-foreground",
+                  )}
+                  onClick={() => setOpen(false)}
+                >
+                  Account Settings
+                </Link>
+                <LogoutButton
+                  variant="outline"
+                  className="mt-2 justify-start px-3"
+                  onLogout={() => setOpen(false)}
+                />
+              </>
+            ) : (
+              <Button asChild variant="accent" className="mt-2 justify-start">
+                <PlanCtaLink icon="none" onClick={() => setOpen(false)} />
+              </Button>
+            )}
           </nav>
         </div>
       ) : null}

@@ -12,15 +12,17 @@ type PlanCtaLinkProps = {
   profileLabel?: string;
   icon?: "arrow" | "sparkles" | "none";
   className?: string;
+  onClick?: () => void;
 };
 
 export const PlanCtaLink = forwardRef<HTMLAnchorElement, PlanCtaLinkProps>(
   (
     {
       defaultLabel = "Build My Plan",
-      profileLabel = "View My Plan",
+      profileLabel = "Open Planner",
       icon = "arrow",
       className,
+      onClick,
     },
     ref,
   ) => {
@@ -72,6 +74,7 @@ export const PlanCtaLink = forwardRef<HTMLAnchorElement, PlanCtaLinkProps>(
         ref={ref}
         href={hasProfile ? "/planner" : "/login?next=/planner"}
         className={cn(className)}
+        onClick={onClick}
       >
         {hasProfile ? profileLabel : defaultLabel}
         {Icon ? <Icon className="h-4 w-4" aria-hidden="true" /> : null}

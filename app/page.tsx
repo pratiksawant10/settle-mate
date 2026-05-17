@@ -80,7 +80,7 @@ export default async function HomePage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" variant="accent">
-                <PlanCtaLink defaultLabel="Build My Student Plan" profileLabel="View My Student Plan" />
+                <PlanCtaLink defaultLabel="Build My Student Plan" profileLabel="Open Student Planner" />
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link href="/ask-ai">
@@ -247,7 +247,7 @@ export default async function HomePage() {
             </p>
           </div>
           <Button asChild size="lg" variant="accent">
-            <PlanCtaLink defaultLabel="Build My Student Plan" profileLabel="View My Student Plan" />
+            <PlanCtaLink defaultLabel="Build My Student Plan" profileLabel="Open Student Planner" />
           </Button>
         </div>
       </section>

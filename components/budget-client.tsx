@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Banknote, PiggyBank, TrendingDown, TrendingUp } from "lucide-react";
+import { Banknote, Loader2, PiggyBank, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 
+import { generateBudgetRecommendation } from "@/app/budget/actions";
 import { Field } from "@/components/field";
 import { MetricCard } from "@/components/metric-card";
 import { PageShell } from "@/components/page-shell";
@@ -12,74 +13,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import {
+  calculateBudget,
+  initialBudgetForm,
+  type BudgetForm,
+  type BudgetResult,
+} from "@/lib/budget-model";
 import { cities } from "@/lib/constants";
-import { formatCurrency, weeklyToMonthly } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 
-type BudgetForm = {
-  city: string;
-  weeklyRent: string;
-  groceries: string;
-  transport: string;
-  phoneInternet: string;
-  eatingOut: string;
-  other: string;
-  income: string;
+type BudgetAiRecommendation = {
+  headline: string;
+  summary: string;
+  marketContext: string[];
+  recommendedActions: string[];
+  riskFlags: string[];
+  sources: string[];
 };
-
-type BudgetResult = {
-  monthlyExpenses: number;
-  monthlyIncome: number;
-  surplus: number;
-  rentShare: number;
-  status: "Comfortable" | "Tight but manageable" | "Your budget may feel tight";
-  recommendation: string;
-};
-
-const initialForm: BudgetForm = {
-  city: "Melbourne",
-  weeklyRent: "320",
-  groceries: "110",
-  transport: "45",
-  phoneInternet: "65",
-  eatingOut: "60",
-  other: "180",
-  income: "550",
-};
-
-function toNumber(value: string) {
-  return Number(value) || 0;
-}
-
-function calculateBudget(form: BudgetForm): BudgetResult {
-  const monthlyExpenses =
-    weeklyToMonthly(toNumber(form.weeklyRent)) +
-    weeklyToMonthly(toNumber(form.groceries)) +
-    weeklyToMonthly(toNumber(form.transport)) +
-    weeklyToMonthly(toNumber(form.eatingOut)) +
-    toNumber(form.phoneInternet) +
-    toNumber(form.other);
-  const monthlyIncome = weeklyToMonthly(toNumber(form.income));
-  const surplus = monthlyIncome - monthlyExpenses;
-  const rentShare = monthlyExpenses > 0 ? Math.round((weeklyToMonthly(toNumber(form.weeklyRent)) / monthlyExpenses) * 100) : 0;
-  const status =
-    surplus >= 400 ? "Comfortable" : surplus >= 0 ? "Tight but manageable" : "Your budget may feel tight";
-
-  const recommendation =
-    status === "Comfortable"
-      ? `Your ${form.city} budget has breathing room. Rent is taking up ${rentShare}% of monthly expenses, so keep housing predictable and save part of the surplus.`
-      : status === "Tight but manageable"
-        ? `Your rent is taking up ${rentShare}% of your monthly budget. Consider shared accommodation in nearby suburbs or increasing your weekly work target during semester breaks.`
-        : `Your budget may feel tight in ${form.city}. Rent is taking up ${rentShare}% of monthly expenses, so recheck housing, reduce flexible spending, and speak with student support if the gap continues.`;
-
-  return {
-    monthlyExpenses,
-    monthlyIncome,
-    surplus,
-    rentShare,
-    status,
-    recommendation,
-  };
-}
 
 function statusVariant(status: BudgetResult["status"]) {
   if (status === "Comfortable") return "success";
@@ -87,17 +37,45 @@ function statusVariant(status: BudgetResult["status"]) {
   return "danger";
 }
 
+function renderInlineBold(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>;
+    }
+
+    return <span key={`${part}-${index}`}>{part}</span>;
+  });
+}
+
 export function BudgetClient() {
-  const [form, setForm] = useState<BudgetForm>(initialForm);
-  const [result, setResult] = useState<BudgetResult>(() => calculateBudget(initialForm));
+  const [form, setForm] = useState<BudgetForm>(initialBudgetForm);
+  const [result, setResult] = useState<BudgetResult>(() => calculateBudget(initialBudgetForm));
+  const [recommendation, setRecommendation] = useState<BudgetAiRecommendation | null>(null);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
+  const [pendingRecommendation, setPendingRecommendation] = useState(false);
 
   function updateField<K extends keyof BudgetForm>(field: K, value: BudgetForm[K]) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setResult(calculateBudget(form));
+    const localResult = calculateBudget(form);
+    setResult(localResult);
+    setRecommendation(null);
+    setRecommendationError(null);
+    setPendingRecommendation(true);
+
+    const response = await generateBudgetRecommendation(form);
+    setResult(response.budget);
+
+    if (response.ok) {
+      setRecommendation(response.recommendation);
+    } else {
+      setRecommendationError(response.message);
+    }
+
+    setPendingRecommendation(false);
   }
 
   return (
@@ -106,24 +84,24 @@ export function BudgetClient() {
       title="Estimate your monthly student budget"
       description="Add your expected weekly and monthly numbers to see expenses, income, surplus or shortfall, and a plain-English budget health status."
     >
-      <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="mx-auto grid max-w-6xl gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Student budget model</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-5" onSubmit={onSubmit}>
-              <Field id="city" label="City">
-                <Select id="city" value={form.city} onChange={(event) => updateField("city", event.target.value)}>
-                  {cities.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+            <form className="grid gap-4" onSubmit={onSubmit}>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <Field id="city" label="City">
+                  <Select id="city" value={form.city} onChange={(event) => updateField("city", event.target.value)}>
+                    {cities.map((city) => (
+                      <option key={city} value={city}>
+                        {city}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
 
-              <div className="grid gap-5 md:grid-cols-2">
                 <Field id="weeklyRent" label="Weekly rent">
                   <Input
                     id="weeklyRent"
@@ -151,6 +129,9 @@ export function BudgetClient() {
                     onChange={(event) => updateField("transport", event.target.value)}
                   />
                 </Field>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Field id="phoneInternet" label="Phone/internet per month">
                   <Input
                     id="phoneInternet"
@@ -178,22 +159,28 @@ export function BudgetClient() {
                     onChange={(event) => updateField("other", event.target.value)}
                   />
                 </Field>
+
+                <Field id="income" label="Expected part-time income per week">
+                  <Input
+                    id="income"
+                    type="number"
+                    min="0"
+                    value={form.income}
+                    onChange={(event) => updateField("income", event.target.value)}
+                  />
+                </Field>
               </div>
 
-              <Field id="income" label="Expected part-time income per week">
-                <Input
-                  id="income"
-                  type="number"
-                  min="0"
-                  value={form.income}
-                  onChange={(event) => updateField("income", event.target.value)}
-                />
-              </Field>
-
-              <Button type="submit">
-                Calculate Budget
-                <Banknote className="h-4 w-4" aria-hidden="true" />
-              </Button>
+              <div className="grid md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                <Button type="submit" disabled={pendingRecommendation} className="md:h-10">
+                  {pendingRecommendation ? "Generating AI..." : "Calculate with AI"}
+                  {pendingRecommendation ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Banknote className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
@@ -267,13 +254,72 @@ export function BudgetClient() {
               </div>
 
               <div className="rounded-lg bg-sky-50 p-5">
-                <h3 className="font-semibold">AI recommendation card</h3>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">{result.recommendation}</p>
-                <div className="mt-5 grid gap-2 text-sm leading-6 text-muted-foreground">
-                  <p>- Keep rent and bills separate from daily spending.</p>
-                  <p>- Review the budget again after your first rent payment.</p>
-                  <p>- Add one small emergency buffer before lifestyle spending.</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-primary">AI recommendation card</p>
+                    <h3 className="mt-1 font-semibold">
+                      {recommendation?.headline ?? "City-aware budget guidance"}
+                    </h3>
+                  </div>
+                  {pendingRecommendation ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
+                  ) : (
+                    <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+                  )}
                 </div>
+
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {pendingRecommendation
+                    ? "Checking your budget model against current city context..."
+                    : renderInlineBold(recommendation?.summary ?? result.recommendation)}
+                </p>
+
+                {recommendationError ? (
+                  <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                    {recommendationError}
+                  </div>
+                ) : null}
+
+                {recommendation ? (
+                  <div className="mt-5 grid gap-4 text-sm leading-6">
+                    {recommendation.marketContext.length > 0 ? (
+                      <div>
+                        <p className="font-semibold">Market context</p>
+                        <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
+                          {recommendation.marketContext.map((item) => (
+                            <li key={item}>{renderInlineBold(item)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    <div>
+                      <p className="font-semibold">Recommended actions</p>
+                      <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
+                        {recommendation.recommendedActions.map((item) => (
+                          <li key={item}>{renderInlineBold(item)}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {recommendation.riskFlags.length > 0 ? (
+                      <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                        <p className="font-semibold text-amber-950">Watch points</p>
+                        <ul className="mt-2 list-disc space-y-2 pl-5 text-amber-900">
+                          {recommendation.riskFlags.map((item) => (
+                            <li key={item}>{renderInlineBold(item)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-5 grid gap-2 text-sm leading-6 text-muted-foreground">
+                    <p>- Keep rent and bills separate from daily spending.</p>
+                    <p>- Review the budget again after your first rent payment.</p>
+                    <p>- Add one small emergency buffer before lifestyle spending.</p>
+                  </div>
+                )}
               </div>
             </div>
 
