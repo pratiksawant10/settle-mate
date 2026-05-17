@@ -552,7 +552,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
 
                 {activeSection === "overview" ? (
                   <>
-                    <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+                    <div className="grid">
                       <div className="rounded-lg border bg-gradient-to-r from-primary to-sky-700 p-6 text-primary-foreground">
                         <Badge className="bg-white text-primary">AI-generated plan</Badge>
                         <h3 className="mt-5 text-2xl font-bold">Welcome to {form.city}, {form.name || "student"}</h3>
@@ -566,7 +566,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
                         </div>
                       </div>
 
-                      <div className="rounded-lg border bg-white p-6">
+                      {/* <div className="rounded-lg border bg-white p-6">
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <p className="text-sm font-semibold text-muted-foreground">Readiness score</p>
@@ -583,7 +583,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
                           You still have a few important setup steps left. Focus on documents, accommodation, and support
                           contacts first.
                         </p>
-                      </div>
+                      </div> */}
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

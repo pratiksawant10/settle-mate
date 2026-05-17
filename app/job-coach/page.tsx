@@ -1,6 +1,21 @@
+import type { Metadata } from "next";
 import { BriefcaseBusiness } from "lucide-react";
 
 import { ComingSoonTool } from "@/components/coming-soon-tool";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Part-Time Job Coach for International Students",
+  description:
+    "Plan part-time job preparation in Australia with student-friendly prompts for resume setup, interview practice, work availability, and workplace-rights reminders.",
+  path: "/job-coach",
+  keywords: [
+    "part-time jobs international students Australia",
+    "student resume Australia",
+    "student job coach Australia",
+    "casual work international students",
+  ],
+});
 
 export default function JobCoachPage() {
   return (

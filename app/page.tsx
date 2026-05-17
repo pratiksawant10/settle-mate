@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
   Banknote,
@@ -18,7 +19,21 @@ import { SectionHeader } from "@/components/section-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { audienceCountries, cities, features } from "@/lib/constants";
+import { createPageMetadata, siteUrl } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "International Student Planner for Australia",
+  description:
+    "Build a personalised student arrival plan for Australia with AI tools for budgeting, accommodation, city guidance, part-time work preparation, and first-week settlement tasks.",
+  path: "/",
+  keywords: [
+    "international student planner Australia",
+    "move to Australia student checklist",
+    "Australia student arrival plan",
+    "study abroad Australia planning",
+  ],
+});
 
 const trustIndicators = [
   { label: "Personalised settlement plans", icon: Plane },
@@ -53,6 +68,37 @@ const dashboardMetrics = [
   { label: "Job coaching", value: "Soon", tone: "bg-indigo-50 text-indigo-800", icon: BriefcaseBusiness },
 ];
 
+const homeStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "SettleMate AI",
+  applicationCategory: "EducationalApplication",
+  operatingSystem: "Web",
+  url: siteUrl,
+  description:
+    "AI-powered student planning tools for international students moving to Australia, including arrival planning, budget checks, city guidance, accommodation prompts, and settlement support.",
+  audience: {
+    "@type": "Audience",
+    audienceType: "International students planning to study in Australia",
+  },
+  areaServed: {
+    "@type": "Country",
+    name: "Australia",
+  },
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "AUD",
+  },
+  featureList: [
+    "International student arrival planner",
+    "Student budget calculator for Australia",
+    "Australian city survival guides",
+    "Accommodation and rental safety prompts",
+    "AI student settlement assistant",
+  ],
+};
+
 export default async function HomePage() {
   const supabase = createClient();
   const {
@@ -65,6 +111,10 @@ export default async function HomePage() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeStructuredData) }}
+      />
       <section className="settlemate-shell dashboard-grid overflow-hidden">
         <div className="container grid min-h-[calc(100vh-4rem)] items-center gap-12 py-14 lg:grid-cols-[0.95fr_1.05fr] lg:py-20">
           <div className="max-w-3xl">

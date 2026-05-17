@@ -1,8 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PlannerClient } from "@/components/planner-client";
+import { createPageMetadata } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import type { Concern, PlannerForm } from "@/lib/student-plan";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Student Planner Dashboard",
+  description:
+    "Private student onboarding and personalised settlement dashboard for international students using SettleMate AI.",
+  path: "/planner",
+  noIndex: true,
+});
 
 type StudentOnboardingProfileRow = {
   student_name: string;

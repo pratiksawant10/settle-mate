@@ -1,8 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AskAiClient } from "@/components/ask-ai-client";
+import { createPageMetadata } from "@/lib/seo";
 import { getAiUsageSummary, type AiUsageSummary } from "@/lib/services/ai-usage-service";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Ask SettleMate AI",
+  description:
+    "Private AI chat for authenticated international students with saved onboarding context and settlement planning support.",
+  path: "/ask-ai",
+  noIndex: true,
+});
 
 type StudentOnboardingProfileRow = {
   student_name: string;

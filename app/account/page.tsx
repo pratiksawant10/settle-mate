@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CreditCard, Settings, UserRound } from "lucide-react";
 
@@ -6,8 +7,17 @@ import { AiUsageCard } from "@/components/ai-usage-card";
 import { PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createPageMetadata } from "@/lib/seo";
 import { getAiUsageSummary, type AiUsageSummary } from "@/lib/services/ai-usage-service";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Account Settings",
+  description:
+    "Private account settings for SettleMate AI users, including AI plan, usage, and upgrade options.",
+  path: "/account",
+  noIndex: true,
+});
 
 export default async function AccountPage() {
   const supabase = createClient();

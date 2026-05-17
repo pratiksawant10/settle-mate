@@ -1,8 +1,24 @@
+import type { Metadata } from "next";
 import { Bus, DollarSign, MapPinned, ShieldCheck, Users } from "lucide-react";
 
 import { PageShell } from "@/components/page-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Australia City Guides for International Students",
+  description:
+    "Compare student rent ranges, transport cards, popular suburbs, community tips, and rental safety prompts across Melbourne, Sydney, Brisbane, Adelaide, Perth, and Canberra.",
+  path: "/city-guides",
+  keywords: [
+    "Australia city guides international students",
+    "best suburbs for students Australia",
+    "Melbourne student suburbs",
+    "Sydney student rent guide",
+    "Brisbane student accommodation",
+  ],
+});
 
 const cityGuides = [
   {
@@ -56,8 +72,6 @@ const cityGuides = [
 ];
 
 export default function CityGuidesPage() {
-  const melbourne = cityGuides[0];
-
   return (
     <PageShell
       eyebrow="City Survival Guides"
@@ -90,7 +104,7 @@ export default function CityGuidesPage() {
                     <DollarSign className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                     <div>
                       <dt className="font-semibold">Typical student rent range</dt>
-                      <dd className="text-muted-foreground">{guide.rent} placeholder</dd>
+                      <dd className="text-muted-foreground">{guide.rent}</dd>
                     </div>
                   </div>
                   <div>

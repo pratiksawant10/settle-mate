@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   AlertTriangle,
   Banknote,
@@ -19,6 +20,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Design System",
+  description: "Internal SettleMate AI design system reference.",
+  path: "/design-system",
+  noIndex: true,
+});
 
 const colours = [
   { name: "Primary deep teal", value: "#075f7a", className: "bg-primary" },

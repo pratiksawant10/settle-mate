@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
+
 import { LoginClient } from "@/components/login-client";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Sign In",
+  description: "Sign in to SettleMate AI to build your student planner dashboard.",
+  path: "/login",
+  noIndex: true,
+});
 
 type LoginPageProps = {
   searchParams?: {

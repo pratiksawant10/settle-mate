@@ -18,8 +18,7 @@ export function SiteFooter() {
             SettleMate AI
           </div>
           <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-            A demo MVP for personalised student settlement planning, budgeting, city guidance,
-            and support discovery in Australia.
+            Helping international students in Australia plan their budgets and find affordable housing
           </p>
         </div>
 
