@@ -17,9 +17,9 @@ import {
   Target,
   UserRound,
 } from "lucide-react";
-import Link from "next/link";
 
 import { askSettleMateAi } from "@/app/ask-ai/actions";
+import { AiUsageCard, type AiUsageSummaryView } from "@/components/ai-usage-card";
 import { PageShell } from "@/components/page-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ type Message = {
     outputTokens: number;
     totalTokens: number;
     model: string;
+    estimatedCostUsd: number;
   };
 };
 
@@ -53,6 +54,8 @@ export type SavedProfileContext = {
 
 type AskAiClientProps = {
   profile: SavedProfileContext;
+  usageSummary: AiUsageSummaryView | null;
+  usageError: string | null;
 };
 
 const starterQuestions = [
@@ -63,7 +66,7 @@ const starterQuestions = [
   { label: "Rental questions", prompt: "What should I ask before paying for a room?", icon: Home },
 ];
 
-export function AskAiClient({ profile }: AskAiClientProps) {
+export function AskAiClient({ profile, usageSummary: initialUsageSummary, usageError }: AskAiClientProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -74,6 +77,7 @@ export function AskAiClient({ profile }: AskAiClientProps) {
   ]);
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState(false);
+  const [usageSummary, setUsageSummary] = useState(initialUsageSummary);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const profileItems = useMemo(
@@ -112,6 +116,10 @@ export function AskAiClient({ profile }: AskAiClientProps) {
     setPending(true);
 
     const result = await askSettleMateAi(trimmed, history);
+
+    if (result.ok) {
+      setUsageSummary(result.usageSummary);
+    }
 
     setMessages((current) => [
       ...current,
@@ -165,7 +173,9 @@ export function AskAiClient({ profile }: AskAiClientProps) {
                 </CardTitle>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="success">OpenAI connected</Badge>
+                <Badge variant={usageError ? "warning" : "success"}>
+                  {usageError ? "Usage setup needed" : "OpenAI connected"}
+                </Badge>
                 <Badge variant="secondary">Saved profile loaded</Badge>
               </div>
             </div>
@@ -241,6 +251,9 @@ export function AskAiClient({ profile }: AskAiClientProps) {
                             <span className="rounded-md bg-slate-100 px-2 py-1">
                               out {message.usage.outputTokens.toLocaleString()}
                             </span>
+                            <span className="rounded-md bg-slate-100 px-2 py-1">
+                              ${message.usage.estimatedCostUsd.toFixed(6)}
+                            </span>
                           </div>
                         ) : null}
                       </div>
@@ -302,27 +315,7 @@ export function AskAiClient({ profile }: AskAiClientProps) {
         </Card>
 
         <aside className="space-y-5">
-          <Card className="overflow-hidden">
-            <CardHeader className="border-b bg-slate-950 text-white">
-              <CardTitle className="text-base">Saved profile context</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="grid gap-3">
-                {profileItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={item.label} className="grid gap-2 rounded-lg border bg-white p-3">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">{item.label}</p>
-                      </div>
-                      <p className="break-words text-sm font-semibold leading-5">{item.value}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          <AiUsageCard usageSummary={usageSummary} usageError={usageError} />
 
           <Card>
             <CardHeader>

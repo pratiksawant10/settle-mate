@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AskAiClient } from "@/components/ask-ai-client";
+import { getAiUsageSummary, type AiUsageSummary } from "@/lib/services/ai-usage-service";
 import { createClient } from "@/lib/supabase/server";
 
 type StudentOnboardingProfileRow = {
@@ -56,5 +57,17 @@ export default async function AskAiPage() {
     redirect("/planner");
   }
 
-  return <AskAiClient profile={mapProfile(profile)} />;
+  let usageSummary: AiUsageSummary | null = null;
+  let usageError: string | null = null;
+
+  try {
+    usageSummary = await getAiUsageSummary(user.id);
+  } catch (error) {
+    usageError =
+      error instanceof Error && error.message.includes("SUPABASE_SERVICE_ROLE_KEY")
+        ? "AI usage tracking needs SUPABASE_SERVICE_ROLE_KEY."
+        : "AI usage tracking is not available right now.";
+  }
+
+  return <AskAiClient profile={mapProfile(profile)} usageSummary={usageSummary} usageError={usageError} />;
 }

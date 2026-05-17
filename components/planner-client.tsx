@@ -254,7 +254,7 @@ export function PlannerClient({ initialProfile = null }: PlannerClientProps) {
   return (
     <PageShell
       eyebrow={plan ? "Student Planner Dashboard" : "Student Planner Onboarding"}
-      title={plan ? "Your personalised first-90-days dashboard" : "Build your personalised first-90-days dashboard"}
+      title={plan ? "Your personalised first 90 days dashboard" : "Build your personalised first 90 days dashboard"}
       description={
         plan
           ? "Review your saved student profile, first-week checklist, budget snapshot, housing prompts, and support reminders."

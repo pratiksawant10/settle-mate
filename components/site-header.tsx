@@ -10,9 +10,32 @@ import { Button } from "@/components/ui/button";
 import { navItems } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  isAuthenticated: boolean;
+};
+
+function getNavHref(href: string, isAuthenticated: boolean) {
+  if (href === "/" && isAuthenticated) {
+    return "/planner";
+  }
+
+  return href;
+}
+
+function getVisibleNavItems(isAuthenticated: boolean) {
+  return navItems.filter((item) => {
+    if (isAuthenticated) {
+      return item.href !== "/";
+    }
+
+    return item.href !== "/planner";
+  });
+}
+
+export function SiteHeader({ isAuthenticated }: SiteHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const visibleNavItems = getVisibleNavItems(isAuthenticated);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
@@ -29,12 +52,13 @@ export function SiteHeader() {
         </Link>
 
         <nav aria-label="Main navigation" className="hidden items-center gap-1 lg:flex">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
+            const href = getNavHref(item.href, isAuthenticated);
             const active = pathname === item.href;
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={item.label}
+                href={href}
                 className={cn(
                   "rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                   active && "bg-secondary text-secondary-foreground shadow-sm",
@@ -68,12 +92,13 @@ export function SiteHeader() {
       {open ? (
         <div className="border-t bg-white lg:hidden">
           <nav aria-label="Mobile navigation" className="container grid gap-1 py-3">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
+              const href = getNavHref(item.href, isAuthenticated);
               const active = pathname === item.href;
               return (
                 <Link
-                  key={item.href}
-                  href={item.href}
+                  key={item.label}
+                  href={href}
                   className={cn(
                     "rounded-md px-3 py-3 text-sm font-medium text-muted-foreground",
                     active ? "bg-secondary text-secondary-foreground" : "hover:bg-muted hover:text-foreground",

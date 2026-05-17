@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   Banknote,
   BriefcaseBusiness,
   CheckCircle2,
   ClipboardCheck,
-  Home,
   MapPinned,
   MessageCircle,
   Plane,
@@ -18,6 +18,7 @@ import { SectionHeader } from "@/components/section-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { audienceCountries, cities, features } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
 
 const trustIndicators = [
   { label: "Personalised settlement plans", icon: Plane },
@@ -52,7 +53,16 @@ const dashboardMetrics = [
   { label: "Job coaching", value: "Soon", tone: "bg-indigo-50 text-indigo-800", icon: BriefcaseBusiness },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/planner");
+  }
+
   return (
     <>
       <section className="settlemate-shell dashboard-grid overflow-hidden">

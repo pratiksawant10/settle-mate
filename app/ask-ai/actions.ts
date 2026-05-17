@@ -1,5 +1,18 @@
 "use server";
 
+import { calculateEstimatedCostUsd, estimateTokensFromText } from "@/lib/config/model-pricing";
+import {
+  AI_FEATURE_STUDENT_CHAT,
+  FREE_MAX_OUTPUT_TOKENS,
+  FREE_PLAN_CODE,
+  PAID_MAX_OUTPUT_TOKENS,
+  ensureUserCanSendMessage,
+  purchasePack,
+  recordTokenUsage,
+  type AiPricingPlan,
+  type AiUsageSummary,
+  type PurchasePackResult,
+} from "@/lib/services/ai-usage-service";
 import { createClient } from "@/lib/supabase/server";
 
 type ChatHistoryMessage = {
@@ -8,14 +21,23 @@ type ChatHistoryMessage = {
 };
 
 type AskAiResult =
-  | { ok: true; answer: string; usage: TokenUsage }
-  | { ok: false; message: string };
+  | { ok: true; answer: string; usage: TokenUsage; usageSummary: AiUsageSummary }
+  | {
+      ok: false;
+      message: string;
+      statusCode?: 400 | 402 | 429 | 500;
+      reason?: string;
+      tokensRemaining?: number;
+      upgradeRequired?: boolean;
+      recommendedPlans?: AiPricingPlan[];
+    };
 
 type TokenUsage = {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
   model: string;
+  estimatedCostUsd: number;
 };
 
 type StudentOnboardingProfileRow = {
@@ -31,6 +53,7 @@ type StudentOnboardingProfileRow = {
 };
 
 type OpenAiResponse = {
+  id?: string;
   output_text?: string;
   output?: Array<{
     content?: Array<{
@@ -82,6 +105,28 @@ function profileToPromptContext(profile: StudentOnboardingProfileRow | null) {
 - Main concern: ${profile.main_concern}`;
 }
 
+function previewText(value: string) {
+  return value.replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+function blockedStatusCode(reason: string) {
+  return reason === "token_limit_reached" ? 402 : 429;
+}
+
+function normalizeUsage(data: OpenAiResponse, prompt: string, answer: string, model: string): TokenUsage {
+  const inputTokens = data.usage?.input_tokens ?? estimateTokensFromText(prompt);
+  const outputTokens = data.usage?.output_tokens ?? estimateTokensFromText(answer);
+  const totalTokens = data.usage?.total_tokens ?? inputTokens + outputTokens;
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    model,
+    estimatedCostUsd: calculateEstimatedCostUsd(model, inputTokens, outputTokens),
+  };
+}
+
 export async function askSettleMateAi(
   question: string,
   history: ChatHistoryMessage[],
@@ -123,8 +168,45 @@ export async function askSettleMateAi(
     .slice(-8)
     .map((message) => `${message.role === "student" ? "Student" : "Assistant"}: ${message.content}`)
     .join("\n\n");
+  const prompt = `${profileToPromptContext(profile)}
+
+Recent conversation:
+${recentHistory || "No previous messages."}
+
+Student question:
+${trimmed}`;
 
   try {
+    const usageGate = await ensureUserCanSendMessage(user.id, { promptLength: trimmed.length });
+
+    if (!usageGate.allowed) {
+      return {
+        ok: false,
+        message: usageGate.message,
+        statusCode: blockedStatusCode(usageGate.reason),
+        reason: usageGate.reason,
+        tokensRemaining: usageGate.tokensRemaining,
+        upgradeRequired: usageGate.upgradeRequired,
+        recommendedPlans: usageGate.recommendedPlans,
+      };
+    }
+
+    const maxOutputTokens =
+      usageGate.entitlement.planCode === FREE_PLAN_CODE ? FREE_MAX_OUTPUT_TOKENS : PAID_MAX_OUTPUT_TOKENS;
+    const estimatedTokensRequired = estimateTokensFromText(prompt) + maxOutputTokens;
+
+    if (usageGate.entitlement.tokensRemaining < estimatedTokensRequired) {
+      return {
+        ok: false,
+        message: "Your remaining token balance is too low for this request. Upgrade to a paid pack to continue.",
+        statusCode: 402,
+        reason: "token_limit_reached",
+        tokensRemaining: Math.max(0, usageGate.entitlement.tokensRemaining),
+        upgradeRequired: true,
+        recommendedPlans: usageGate.recommendedPlans,
+      };
+    }
+
     const model = process.env.OPENAI_CHAT_MODEL ?? "gpt-4.1-mini";
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -135,7 +217,7 @@ export async function askSettleMateAi(
       signal: AbortSignal.timeout(20000),
       body: JSON.stringify({
         model,
-        max_output_tokens: 900,
+        max_output_tokens: maxOutputTokens,
         input: [
           {
             role: "system",
@@ -144,13 +226,7 @@ export async function askSettleMateAi(
           },
           {
             role: "user",
-            content: `${profileToPromptContext(profile)}
-
-Recent conversation:
-${recentHistory || "No previous messages."}
-
-Student question:
-${trimmed}`,
+            content: prompt,
           },
         ],
       }),
@@ -171,15 +247,26 @@ ${trimmed}`,
       return { ok: false, message: "OpenAI returned an empty answer. Please try again." };
     }
 
+    const usage = normalizeUsage(data, prompt, answer, model);
+    const usageSummary = await recordTokenUsage({
+      userId: user.id,
+      entitlementId: usageGate.entitlement.id,
+      requestId: data.id ?? null,
+      model,
+      feature: AI_FEATURE_STUDENT_CHAT,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      totalTokens: usage.totalTokens,
+      estimatedCostUsd: usage.estimatedCostUsd,
+      promptPreview: previewText(trimmed),
+      responsePreview: previewText(answer),
+    });
+
     return {
       ok: true,
       answer,
-      usage: {
-        inputTokens: data.usage?.input_tokens ?? 0,
-        outputTokens: data.usage?.output_tokens ?? 0,
-        totalTokens: data.usage?.total_tokens ?? 0,
-        model,
-      },
+      usage,
+      usageSummary,
     };
   } catch (error) {
     return {
@@ -187,7 +274,36 @@ ${trimmed}`,
       message:
         error instanceof DOMException && error.name === "TimeoutError"
           ? "OpenAI took too long to respond. Please try a shorter question."
-          : "We could not reach OpenAI. Please try again.",
+          : error instanceof Error && error.message.includes("SUPABASE_SERVICE_ROLE_KEY")
+            ? "AI usage tracking is not configured. Add SUPABASE_SERVICE_ROLE_KEY before using Ask AI."
+            : "We could not complete the Ask AI request. Please try again.",
+      statusCode: 500,
+    };
+  }
+}
+
+export async function purchaseAiPack(planCode: string): Promise<PurchasePackResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      ok: false,
+      message: "Please sign in before buying an AI pack.",
+    };
+  }
+
+  try {
+    return await purchasePack(planCode);
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error && error.message.includes("SUPABASE_SERVICE_ROLE_KEY")
+          ? "Payment setup needs SUPABASE_SERVICE_ROLE_KEY before packs can be issued."
+          : "Pack purchase is not available right now.",
     };
   }
 }
